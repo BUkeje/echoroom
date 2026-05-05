@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from "react";
 
-export default function AudioPlayer() {
+export default function AudioPlayer({ socket, playbackEvent }) {
   const audioRef = useRef(null);
 
   const tracks = [
@@ -19,6 +19,12 @@ export default function AudioPlayer() {
 
   const currentTrack = tracks[currentTrackIndex];
 
+  function sendPlaybackEvent(data) {
+    if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+    socket.send(JSON.stringify(data));
+  }
+
   async function togglePlay() {
     if (!audioRef.current) return;
 
@@ -26,40 +32,118 @@ export default function AudioPlayer() {
       if (isPlaying) {
         audioRef.current.pause();
         setIsPlaying(false);
+
+        sendPlaybackEvent({
+          type: "pause",
+        });
       } else {
         await audioRef.current.play();
         setIsPlaying(true);
+
+        sendPlaybackEvent({
+          type: "play",
+          time: audioRef.current.currentTime,
+          trackIndex: currentTrackIndex,
+        });
       }
     } catch (error) {
       console.error("Audio failed to play:", error);
-      alert("Audio file could not be played. Check your public/audio folder.");
+      alert(
+        "Audio file could not be played. Click once in the tab, then try again."
+      );
     }
   }
 
   function nextTrack() {
-    if (currentTrackIndex === tracks.length - 1) {
-      // last song → stop playback
+    const isLastTrack = currentTrackIndex === tracks.length - 1;
+
+    if (isLastTrack) {
+      setCurrentTrackIndex(0);
       setIsPlaying(false);
+
+      sendPlaybackEvent({
+        type: "track_change",
+        trackIndex: 0,
+        shouldPlay: false,
+      });
+
       return;
     }
 
-    setCurrentTrackIndex(currentTrackIndex + 1);
+    const newTrackIndex = currentTrackIndex + 1;
+
+    setCurrentTrackIndex(newTrackIndex);
     setIsPlaying(true);
+
+    sendPlaybackEvent({
+      type: "track_change",
+      trackIndex: newTrackIndex,
+      shouldPlay: true,
+    });
   }
 
   function previousTrack() {
     if (currentTrackIndex === 0) return;
 
-    setCurrentTrackIndex(currentTrackIndex - 1);
+    const newTrackIndex = currentTrackIndex - 1;
+
+    setCurrentTrackIndex(newTrackIndex);
     setIsPlaying(true);
+
+    sendPlaybackEvent({
+      type: "track_change",
+      trackIndex: newTrackIndex,
+      shouldPlay: true,
+    });
   }
 
-  // Auto-play when track changes
+  function handleSeek() {
+    if (!audioRef.current) return;
+
+    sendPlaybackEvent({
+      type: "seek",
+      time: audioRef.current.currentTime,
+    });
+  }
+
+  useEffect(() => {
+    if (!playbackEvent || !audioRef.current) return;
+
+    async function handlePlaybackEvent() {
+      try {
+        if (playbackEvent.type === "play") {
+          setCurrentTrackIndex(playbackEvent.trackIndex);
+          audioRef.current.currentTime = playbackEvent.time;
+          await audioRef.current.play();
+          setIsPlaying(true);
+        }
+
+        if (playbackEvent.type === "pause") {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
+
+        if (playbackEvent.type === "track_change") {
+          setCurrentTrackIndex(playbackEvent.trackIndex);
+          setIsPlaying(playbackEvent.shouldPlay);
+        }
+
+        if (playbackEvent.type === "seek") {
+          audioRef.current.currentTime = playbackEvent.time;
+        }
+      } catch (error) {
+        console.error("Sync error:", error);
+      }
+    }
+
+    handlePlaybackEvent();
+  }, [playbackEvent]);
+
   useEffect(() => {
     if (audioRef.current && isPlaying) {
       audioRef.current.play().catch(() => {});
     }
-  }, [currentTrackIndex]);
+  }, [currentTrackIndex, isPlaying]);
 
   return (
     <div

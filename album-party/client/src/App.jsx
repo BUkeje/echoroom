@@ -8,6 +8,7 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
+  const [playbackEvent, setPlaybackEvent] = useState(null);
 
   function joinRoom() {
     if (!username || !room) {
@@ -35,7 +36,18 @@ function App() {
       const data = JSON.parse(event.data);
       console.log("Message from server:", data);
 
-      setMessages((prev) => [...prev, data]);
+      if (data.type === "system" || data.type === "message") {
+        setMessages((prev) => [...prev, data]);
+      }
+
+      if (
+        data.type === "play" ||
+        data.type === "pause" ||
+        data.type === "seek" ||
+        data.type === "track_change"
+      ) {
+        setPlaybackEvent(data);
+      }
     };
 
     setSocket(ws);
@@ -121,7 +133,7 @@ function App() {
 
       <button onClick={sendMessage}>Send</button>
 
-      <AudioPlayer />
+      <AudioPlayer socket={socket} playbackEvent={playbackEvent} />
     </div>
   );
 }

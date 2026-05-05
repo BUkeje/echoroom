@@ -3,13 +3,6 @@ from typing import Dict, List
 
 app = FastAPI()
 
-# Store rooms and connected clients
-# Example:
-# {
-#   "album1": [
-#       {"username": "Bryan", "websocket": websocket}
-#   ]
-# }
 rooms: Dict[str, List[dict]] = {}
 
 
@@ -35,7 +28,6 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_json()
 
-            # Handle JOIN
             if data["type"] == "join":
                 room = data["room"]
                 username = data["username"]
@@ -55,17 +47,19 @@ async def websocket_endpoint(websocket: WebSocket):
                     "message": f"{username} joined the room"
                 })
 
-            # Handle CHAT MESSAGE
             elif data["type"] == "message":
                 message = data["message"]
 
                 print(f"{username} in {room}: {message}")
 
                 await broadcast_to_room(room, {
-                    "type": "chat",
+                    "type": "message",
                     "username": username,
                     "message": message
                 })
+
+            elif data["type"] in ["play", "pause", "seek", "track_change"]:
+                await broadcast_to_room(room, data)
 
     except WebSocketDisconnect:
         print(f"{username} disconnected")
