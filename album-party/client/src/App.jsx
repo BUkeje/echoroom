@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./App.css";
 import AudioPlayer from "./components/AudioPlayer";
 
 function App() {
@@ -70,70 +71,77 @@ function App() {
 
   if (!connected) {
     return (
-      <div style={{ textAlign: "center", marginTop: "50px" }}>
-        <h1>🎧 EchoRoom</h1>
+      <div className="app">
+        <div className="join-card">
+          <h1 className="title">🎧 EchoRoom</h1>
+          <p className="subtitle">
+            Listen to albums live with friends anywhere.
+          </p>
 
-        <input
-          placeholder="Enter your name"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
+          <input
+            className="input"
+            placeholder="Enter your name"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
 
-        <br />
+          <input
+            className="input"
+            placeholder="Room ID"
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
+          />
 
-        <input
-          placeholder="Room ID"
-          value={room}
-          onChange={(e) => setRoom(e.target.value)}
-        />
-
-        <br />
-
-        <button onClick={joinRoom}>Join Room</button>
+          <button className="button" onClick={joinRoom}>
+            Join Room
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div style={{ textAlign: "center", marginTop: "50px" }}>
-      <h2>Room: {room}</h2>
+    <div className="app">
+      <div className="room-container">
+        <h1 className="title">🎧 EchoRoom</h1>
+        <p className="connected">Connected to room: {room}</p>
 
-      <div
-        style={{
-          border: "1px solid #ccc",
-          width: "400px",
-          height: "300px",
-          margin: "20px auto",
-          padding: "10px",
-          overflowY: "scroll",
-          textAlign: "left",
-        }}
-      >
-        {messages.map((msg, i) => (
-          <div key={i} style={{ marginBottom: 6 }}>
-            {msg.type === "system" ? (
-              <em style={{ color: "gray" }}>{msg.message}</em>
-            ) : (
-              <span>
-                <strong>{msg.username}:</strong> {msg.message}
-              </span>
-            )}
+        <AudioPlayer socket={socket} playbackEvent={playbackEvent} />
+
+        <div className="chat-card">
+          <h2>Live Chat</h2>
+
+          <div className="messages-box">
+            {messages.map((msg, i) => (
+              <div key={i} className="message">
+                {msg.type === "system" ? (
+                  <em className="system-message">{msg.message}</em>
+                ) : (
+                  <span>
+                    <strong>{msg.username}:</strong> {msg.message}
+                  </span>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
+
+          <div className="chat-row">
+            <input
+              className="input chat-input"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") sendMessage();
+              }}
+              placeholder="Type a message..."
+            />
+
+            <button className="button" onClick={sendMessage}>
+              Send
+            </button>
+          </div>
+        </div>
       </div>
-
-      <input
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") sendMessage();
-        }}
-        placeholder="Type a message..."
-      />
-
-      <button onClick={sendMessage}>Send</button>
-
-      <AudioPlayer socket={socket} playbackEvent={playbackEvent} />
     </div>
   );
 }
